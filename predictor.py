@@ -14,13 +14,13 @@ def predict_next_close(prices):
     recent = prices[-6:]  # last 6 closes to make 5 diffs
     return_1d = (recent[1:] - recent[:-1]) / recent[:-1]
 
-    volatility = np.std(return_1d)
-    momentum = prices[-1] / prices[-6]
-    sector_strength = np.mean(prices[-10:]) / prices[-1] if len(prices) >= 10 else 1.0
+    volatility = float(np.std(return_1d))
+    momentum = float(prices[-1] / prices[-6])
+    sector_strength = float(np.mean(prices[-10:]) / prices[-1]) if len(prices) >= 10 else 1.0
+    last_return = float(return_1d[-1])  # ✅ Ensure it's a float, not array
 
-    features = np.array([[volatility, momentum, sector_strength, return_1d[-1]]])
+    features = np.array([[volatility, momentum, sector_strength, last_return]])
 
-    # XGBoost Booster expects DMatrix input
     dmatrix = xgb.DMatrix(features)
     predicted = model.predict(dmatrix)[0]
     return float(predicted)
