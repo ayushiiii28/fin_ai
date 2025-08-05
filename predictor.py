@@ -1,32 +1,25 @@
 import numpy as np
-import joblib
-from typing import List
-from xgboost import XGBRegressor
+import pickle
+import os
 
-# Load the pre-trained XGBoost model
-model = joblib.load("xgboost_model.pkl")
+model_path = os.path.join(os.path.dirname(__file__), "xgboost_model.pkl")
+with open(model_path, "rb") as f:
+    model = pickle.load(f)
 
-def predict_next_close(prices: List[float]) -> float:
-    """
-    Predicts the next closing price using a pre-trained XGBoost model.
+def predict_next_close(prices):
+    if prices is None or len(prices) == 0:
+        return None
+    
+    features = []
+    for i in range(5, len(prices)):
+        features.append(prices[i - 5:i])
+    
+    if not features:
+        return None
 
-    Parameters:
-    prices (List[float]): List of past closing prices.
+    features = np.array(features)
+    last_sequence = features[-1].reshape(1, -1)
 
-    Returns:
-    float: Predicted next closing price.
-    """
-    if not prices:
-        raise ValueError("Price list is empty.")
-
-    if len(prices) < 7:
-        return float(prices[-1])  # Fallback to the last price if insufficient data
-
-    # Use the last 7 prices as features
-    recent_prices = np.array(prices[-7:]).reshape(1, -1)
-
-    # Predict using the pre-trained model
-    prediction = model.predict(recent_prices)
-
-    return round(float(prediction[0]), 2)
+    predicted_close = model.predict(last_sequence)[0]
+    return predicted_close
 
