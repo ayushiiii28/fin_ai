@@ -1,10 +1,14 @@
-from sklearn.linear_model import LinearRegression
 import numpy as np
+import joblib
 from typing import List
+from xgboost import XGBRegressor
+
+# Load the pre-trained XGBoost model
+model = joblib.load("xgboost_model.pkl")
 
 def predict_next_close(prices: List[float]) -> float:
     """
-    Predicts the next closing price based on the past 7 prices using linear regression.
+    Predicts the next closing price using a pre-trained XGBoost model.
 
     Parameters:
     prices (List[float]): List of past closing prices.
@@ -18,12 +22,11 @@ def predict_next_close(prices: List[float]) -> float:
     if len(prices) < 7:
         return float(prices[-1])  # Fallback to the last price if insufficient data
 
-    recent_prices = prices[-7:]
-    X = np.arange(len(recent_prices)).reshape(-1, 1)
-    y = np.array(recent_prices)
+    # Use the last 7 prices as features
+    recent_prices = np.array(prices[-7:]).reshape(1, -1)
 
-    model = LinearRegression()
-    model.fit(X, y)
+    # Predict using the pre-trained model
+    prediction = model.predict(recent_prices)
 
-    prediction = model.predict([[len(recent_prices)]])
-    return round(prediction[0], 2)
+    return round(float(prediction[0]), 2)
+
