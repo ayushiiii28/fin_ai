@@ -21,5 +21,6 @@ def predict_next_close(prices):
     last_sequence = features[-1].reshape(1, -1)
 
     predicted_close = model.predict(last_sequence)[0]
-    return predicted_close
+    return round(float(predicted_close), 2)
+
 
