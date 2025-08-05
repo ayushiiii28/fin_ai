@@ -1,10 +1,11 @@
-import numpy as np  # ✅ This is the missing line
+import numpy as np
+import xgboost as xgb
 import pickle
 import os
 
-model_path = os.path.join(os.path.dirname(__file__), "xgboost_model.pkl")
-with open(model_path, "rb") as f:
-    model = pickle.load(f)
+model_path = os.path.join(os.path.dirname(__file__), "xgboost_model.json")
+model = xgb.Booster()
+model.load_model("xgboost_model.json")
 
 def predict_next_close(prices):
     if prices is None or len(prices) < 4:
