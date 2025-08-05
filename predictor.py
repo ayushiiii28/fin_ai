@@ -1,19 +1,13 @@
-import numpy as np
-import pickle
-import os
-
-model_path = os.path.join(os.path.dirname(__file__), "xgboost_model.pkl")
-with open(model_path, "rb") as f:
-    model = pickle.load(f)
-
 def predict_next_close(prices):
-    if prices is None or len(prices) == 0:
+    if prices is None or len(prices) < 4:
         return None
     
+    prices = np.array(prices)
+
     features = []
-    for i in range(5, len(prices)):
-        features.append(prices[i - 5:i])
-    
+    for i in range(4, len(prices)):
+        features.append(prices[i - 4:i])
+
     if not features:
         return None
 
@@ -22,5 +16,4 @@ def predict_next_close(prices):
 
     predicted_close = model.predict(last_sequence)[0]
     return round(float(predicted_close), 2)
-
 
