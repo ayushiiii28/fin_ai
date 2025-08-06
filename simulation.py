@@ -1,16 +1,39 @@
-from data_fetcher import get_stock_data
+from data_fetcher import fetch_data
 from predictor import predict_next_close
-from allocator import allocate_funds
 
-def simulate_investment(total_investment, assets):
+def simulate_investment(amount, tickers):
+    allocations = {}
     predictions = {}
-    for asset in assets:
-        df = get_stock_data(asset)
-        if df.empty or len(df) < 10:
+
+    for ticker in tickers:
+        df = fetch_data(ticker)
+        if df.empty:
+            predictions[ticker] = None
+            allocations[ticker] = 0
             continue
-        predicted_close = predict_next_close(df['Close'].values.flatten())
-        last_close = df['Close'].values[-1]
-        expected_return = (predicted_close - last_close) / last_close
-        predictions[asset] = expected_return
-    allocations = allocate_funds(predictions, total_investment)
+
+        prediction = predict_next_close(df['Close'].values)
+
+        if prediction is None:
+            predictions[ticker] = None
+            allocations[ticker] = 0
+            continue
+
+        predictions[ticker] = round(prediction, 4)
+
+        # Allocate equally to predictions > 0.5
+        if prediction > 0.5:
+            allocations[ticker] = 1  # Will normalize later
+        else:
+            allocations[ticker] = 0
+
+    # Normalize allocations
+    total_alloc = sum(allocations.values())
+    if total_alloc > 0:
+        for k in allocations:
+            allocations[k] = round((allocations[k] / total_alloc) * amount, 2)
+    else:
+        for k in allocations:
+            allocations[k] = 0
+
     return allocations, predictions
