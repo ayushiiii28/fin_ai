@@ -1,4 +1,4 @@
-from data_fetcher import fetch_data
+import yfinance as yf
 from predictor import predict_next_close
 
 def simulate_investment(amount, tickers):
@@ -6,34 +6,30 @@ def simulate_investment(amount, tickers):
     predictions = {}
 
     for ticker in tickers:
-        df = fetch_data(ticker)
-        if df.empty:
-            predictions[ticker] = None
+        df = yf.download(ticker, period="20d", interval="1d", progress=False)
+
+        if df.empty or len(df) < 10:
+            predictions[ticker] = "Insufficient data"
             allocations[ticker] = 0
             continue
 
-        prediction = predict_next_close(df['Close'].values)
+        try:
+            prediction = predict_next_close(df["Close"])
+            predictions[ticker] = float(prediction)
 
-        if prediction is None:
-            predictions[ticker] = None
-            allocations[ticker] = 0
-            continue
-
-        predictions[ticker] = round(prediction, 4)
-
-        # Allocate equally to predictions > 0.5
-        if prediction > 0.5:
-            allocations[ticker] = 1  # Will normalize later
-        else:
+            # Allocate proportionally to positive predictions
+            allocations[ticker] = max(prediction, 0)
+        except Exception as e:
+            predictions[ticker] = f"Error: {str(e)}"
             allocations[ticker] = 0
 
     # Normalize allocations
-    total_alloc = sum(allocations.values())
-    if total_alloc > 0:
-        for k in allocations:
-            allocations[k] = round((allocations[k] / total_alloc) * amount, 2)
+    total_score = sum(allocations.values())
+    if total_score > 0:
+        for ticker in allocations:
+            allocations[ticker] = round((allocations[ticker] / total_score) * amount, 2)
     else:
-        for k in allocations:
-            allocations[k] = 0
+        # No good investment, zero allocation
+        allocations = {ticker: 0 for ticker in tickers}
 
     return allocations, predictions
