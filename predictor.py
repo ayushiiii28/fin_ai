@@ -1,19 +1,22 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import xgboost as xgb
 
-# Load model
+# Load model from JSON
 model = xgb.XGBClassifier()
 model.load_model("xgboost_model.json")
 
 def extract_features(prices):
+    prices = np.array(prices).flatten()  # ✅ Ensure it's 1D
     df = pd.DataFrame({'Close': prices})
 
+    # Feature engineering
     df['return_1d'] = df['Close'].pct_change()
     df['volatility'] = df['Close'].rolling(window=5).std()
     df['momentum'] = df['Close'] / df['Close'].shift(5)
     df['sector_strength'] = df['Close'].rolling(window=10).mean() / df['Close']
 
+    # Drop NaNs caused by rolling calculations
     df.dropna(inplace=True)
 
     if df.empty:
@@ -31,9 +34,9 @@ def extract_features(prices):
 
 def predict_next_close(prices):
     features = extract_features(prices)
-
     if features is None:
-        return None  # Not enough data for prediction
+        return "Insufficient data"
+    dmatrix = xgb.DMatrix(features, feature_names=features.columns.tolist())
+    predicted = model.predict(features)[0]
+    return predicted
 
-    prediction = model.predict_proba(features)[0][1]  # Probability of "should invest" = 1
-    return float(prediction)
