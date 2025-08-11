@@ -1,23 +1,17 @@
-# allocator.py
-def allocate_funds(predictions, total_amount):
-    """
-    Allocate investment funds based on predicted percentage gains.
-    - predictions: dict of {ticker: predicted_percentage_gain}
-    - total_amount: total USD amount to allocate
-    """
-    # Keep only positive predictions
-    positive_preds = {k: v for k, v in predictions.items() if v > 0}
+def allocate_funds(total_amount, predictions):
+    # Ensure all predictions are positive-based for allocation weights
+    adjusted_preds = {k: max(v, 0) for k, v in predictions.items()}
 
-    if not positive_preds:
-        # If all predictions are negative, split equally
-        num_assets = len(predictions)
-        return {k: round(total_amount / num_assets) for k in predictions}
+    total_pred = sum(adjusted_preds.values())
 
-    # Normalize so sum = 1
-    total_gain = sum(positive_preds.values())
-    allocation_ratios = {k: v / total_gain for k, v in positive_preds.items()}
-
-    # Allocate funds
-    allocations = {k: round(total_amount * allocation_ratios.get(k, 0)) for k in predictions}
+    allocations = {}
+    if total_pred > 0:
+        for stock, pred in adjusted_preds.items():
+            alloc = (pred / total_pred) * total_amount if total_pred > 0 else 0
+            allocations[stock] = round(alloc, 2)
+    else:
+        # No positive predictions -> equal allocation
+        equal_share = total_amount / len(predictions)
+        allocations = {stock: round(equal_share, 2) for stock in predictions}
 
     return allocations
