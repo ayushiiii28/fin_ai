@@ -1,20 +1,20 @@
-import pandas as pd
-from predictor import predict_next_close
-from allocator import allocate_funds
+# simulation.py
+from predictor import predict_pct_from_prices
 
 def simulate_investment(amount, tickers):
     allocations = {}
     predictions = {}
 
     for ticker in tickers:
-        df = pd.read_csv(f"data/{ticker}.csv")  # Replace with real-time fetch
-        predicted_pct = predict_next_close(df['Close'].values)
+        import yfinance as yf
+        df = yf.download(ticker, period="90d", interval="1d", progress=False)
+        prices = df["Close"].values
+        pct = predict_pct_from_prices(prices)
 
-        # Store predictions as percentages
-        predictions[ticker] = predicted_pct
-
-    # Allocate funds based on predicted % returns
-    allocations = allocate_funds(amount, predictions)
+        predictions[ticker] = pct
+        if pct is not None:
+            allocations[ticker] = round(amount * max(pct, 0) / 100, 2)  # allocate only for positive pct
+        else:
+            allocations[ticker] = 0
 
     return allocations, predictions
-
