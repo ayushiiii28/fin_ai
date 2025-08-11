@@ -1,47 +1,36 @@
-# predictor.py
-import numpy as np
 import pandas as pd
+import numpy as np
 import xgboost as xgb
-import os
 
-# Load trained classifier (JSON saved by model.save_model)
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "xgboost_model.json")
-model = xgb.XGBClassifier()
-model.load_model(MODEL_PATH)
+# ✅ Load the trained XGBoost model
+model = xgb.XGBRegressor()
+model.load_model("xgboost_model.json")
 
 def extract_features(prices):
-    """Return a 1-row DataFrame with the features used by the model."""
-    prices = np.array(prices).flatten()
-    if len(prices) < 12:
-        return None
+    """Generate features from recent closing prices."""
+    df = pd.DataFrame({'Close': prices})
 
-    df = pd.DataFrame({"Close": prices})
-    df['return_1d'] = df['Close'].pct_change()
-    df['volatility'] = df['Close'].rolling(window=5).std()
-    df['momentum'] = df['Close'] / df['Close'].shift(5)
-    df['sector_strength'] = df['Close'].rolling(window=10).mean() / df['Close']
-    df = df.dropna()
-    if df.empty:
-        return None
+    df["return_1d"] = df["Close"].pct_change()
+    df["volatility"] = df["Close"].rolling(window=5).std()
+    df["momentum"] = df["Close"] / df["Close"].shift(5)
+    df["sector_strength"] = df["Close"].rolling(window=10).mean() / df["Close"]
 
-    last = df.iloc[-1]
-    features = pd.DataFrame([{
-        "volatility": last["volatility"],
-        "momentum": last["momentum"],
-        "sector_strength": last["sector_strength"],
-        "return_1d": last["return_1d"]
-    }])
-    return features
+    # Take only the last row (latest features)
+    df = df.dropna().tail(1)
 
-def predict_probability(prices):
-    """
-    Returns probability (float) that next-day close > today (model's positive class prob).
-    Returns None if insufficient data.
-    """
+    return df[["volatility", "momentum", "sector_strength", "return_1d"]]
+
+def predict_next_close(prices):
+    """Predict % gain/loss for the next day."""
     features = extract_features(prices)
-    if features is None:
-        return None
-    # model.predict_proba expects DataFrame with correct column names
-    prob = model.predict_proba(features)[0][1]
-    return float(prob)
+
+    if features.empty:
+        return 0  # Not enough data
+
+    dmatrix = xgb.DMatrix(features, feature_names=features.columns)
+    predicted = model.predict(dmatrix)[0]
+
+    # Convert log-odds or raw output to percent change
+    return round(predicted * 100, 2)
+
 
